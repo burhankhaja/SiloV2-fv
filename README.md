@@ -4,6 +4,8 @@
 
 The Formal Verification (FV) component of the contest is about using the Certora Prover to formally verify properties in the Solidity smart contracts in scope. Participants are incentivized to implement and verify high coverage properties. Submissions, incentives, and judging are different from the main contest so please read this document in its entirety.
 
+Note that some work from the Certora team has already been done in the `certora` folder. The mutations used for evaluation will not be caught by the existing properties.
+
 ## Scope
 
 | Contract                                                                                                                                                                                               | SLOC |     
