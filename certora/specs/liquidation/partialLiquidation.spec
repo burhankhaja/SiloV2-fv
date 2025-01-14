@@ -5,28 +5,17 @@ import "../simplifications/SimplifiedGetCompoundInterestRateAndUpdate_SAFE.spec"
 import "../simplifications/SiloMathLib_SAFE.spec";
 
 methods {
+    // Dispatchers to Silos
+    // function _.isSolvent(address) external => DISPATCHER(true) ;
+    // function _.repay(uint256, address) external => DISPATCHER(true) ;
+    // function _.callOnBehalfOfSilo(address, uint256, ISilo.CallType, bytes) external => DISPATCHER(true);
+    // function _.redeem(uint256, address, address, ISilo.CollateralType) external => DISPATCHER(true);
+    // function _.previewRedeem(uint256) external => DISPATCHER(true);
+    // function _.getLiquidity() external => DISPATCHER(true);
     
-}
-
-definition ignoredMethod(method f) returns bool =
-    f.selector == sig:PartialLiquidation.initialize(address, bytes).selector;
-
-rule doesntAlwaysRevert(method f, env e)
-    filtered { f -> !ignoredMethod(f) }
-{
-    SafeAssumptionsEnv_withInvariants(e);
-    calldataarg args;
-    f(e, args);
-    satisfy true;
-}
-
-rule maxLiquidationNeverReverts(env e, address user)
-{
-    address colSiloBefore = siloConfig(e).borrowerCollateralSilo(e, user);
-    require colSiloBefore == silo0 || colSiloBefore == silo1 || colSiloBefore == 0;
-    SafeAssumptions_withInvariants(e, user);
-    uint256 collateralToLiquidate; uint256 debtToRepay; bool sTokenRequired;
-    collateralToLiquidate, debtToRepay, sTokenRequired = maxLiquidation@withrevert(e, user);
-    assert !lastReverted;
+    unresolved external in PartialLiquidation.liquidationCall(address, address, address, uint256, bool) 
+        => DISPATCH(use_fallback=true) [ silo0._, silo1._ ] default NONDET;
+    unresolved external in PartialLiquidation.maxLiquidation(address) 
+        => DISPATCH(use_fallback=true) [ silo0._, silo1._ ] default NONDET;
 }
 
