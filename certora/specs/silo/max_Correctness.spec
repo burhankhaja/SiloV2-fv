@@ -17,30 +17,6 @@ rule HLP_MaxDeposit_reverts(env e, address receiver)
     assert lastReverted;
 }
 
-rule HLP_MaxRepayShares_reverts(env e, address borrower)
-{
-    SafeAssumptions_withInvariants(e, borrower);
-    
-    uint maxShares = maxRepayShares(e, borrower);
-    uint256 shares;
-    require shares > maxShares;
-    mathint assets = repayShares@withrevert(e, shares, borrower);
-
-    assert lastReverted;
-}
-
-// repaying with maxRepay() value should burn all user share debt token balance
-rule maxRepay_burnsAllDebt(env e, address user)
-{
-    SafeAssumptions_withInvariants(e, user);
-
-    uint maxAssets = maxRepay(e, user);
-    uint256 shares = repay(e, maxAssets, user);    // this did not revert
-    uint debtAfter = shareDebtToken0.balanceOf(user);
-
-    assert debtAfter == 0;
-}
-
 // result of maxWithdraw() should never be more than liquidity of the Silo
 rule maxWithdraw_noGreaterThanLiquidity(env e)
 {

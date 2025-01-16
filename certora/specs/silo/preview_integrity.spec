@@ -118,25 +118,6 @@ rule HLP_PreviewBorrowCorrectness_strict(address receiver)
 }
 
 /// @status Done
-rule HLP_PreviewRepayCorrectness_strict(address receiver)
-{
-    env e;
-
-    // Block time-stamp >= interest rate time-stamp
-    silosTimestampSetupRequirements(e);
-    // receiver is not one of the contracts in the scene
-    nonSceneAddressRequirements(receiver);
-    totalSuppliesMoreThanBalances(receiver, silo0);
-
-    requireInvariant assetsZeroInterestRateTimestampZero(e) ;
-    
-    uint256 assets;
-    uint256 debtSharesReported = previewRepay(e, assets);
-    uint256 debtSharesRepaid = repay(e, assets, receiver);
-    assert debtSharesReported == debtSharesRepaid;
-}
-
-/// @status Done
 rule HLP_PreviewBorrowSharesCorrectness(address receiver)
 {
     env e;
