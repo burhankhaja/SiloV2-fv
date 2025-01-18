@@ -349,6 +349,7 @@ library Actions {
         // cast safe, because we checked `fee > type(uint192).max`
         SiloStorageLib.getSiloStorage().daoAndDeployerRevenue += uint192(fee);
 
+        // mutation: replace "_receiver" with "this"
         IERC20(_token).safeTransfer(address(_receiver), _amount);
 
         require(

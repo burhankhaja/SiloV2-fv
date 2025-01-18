@@ -113,7 +113,8 @@ contract PartialLiquidation is IPartialLiquidation, IHookReceiver {
 
         siloConfigCached.turnOffReentrancyProtection();
 
-        ISilo(debtConfig.silo).repay(repayDebtAssets, _borrower);
+        // mutation: fail to repay in "liquidationCall"
+        // ISilo(debtConfig.silo).repay(repayDebtAssets, _borrower);
 
         if (_receiveSToken) {
             if (params.collateralShares != 0) {
