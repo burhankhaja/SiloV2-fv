@@ -350,7 +350,7 @@ library Actions {
         SiloStorageLib.getSiloStorage().daoAndDeployerRevenue += uint192(fee);
 
         // mutation: replace "_receiver" with "this"
-        IERC20(_token).safeTransfer(address(_receiver), _amount);
+        IERC20(_token).safeTransfer(address(this), _amount);
 
         require(
             _receiver.onFlashLoan(msg.sender, _token, _amount, fee, _data) == _FLASHLOAN_CALLBACK,
