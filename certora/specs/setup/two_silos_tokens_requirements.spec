@@ -55,14 +55,14 @@ function configForEightTokensSetupRequirements() {
     
     require silo0.siloConfig() == siloConfig;
     require shareDebtToken0.siloConfig() == siloConfig;
-    require shareDebtToken0.siloConfig() == siloConfig;
+    require shareProtectedCollateralToken0.siloConfig() == siloConfig;
 
     require shareDebtToken1.silo() == silo1;
     require shareProtectedCollateralToken1.silo() == silo1;
     
     require silo1.siloConfig() == siloConfig;
     require shareDebtToken1.siloConfig() == siloConfig;
-    require shareDebtToken1.siloConfig() == siloConfig;
+    require shareProtectedCollateralToken1.siloConfig() == siloConfig;
 }
 
 function totalSupplyMoreThanBalance(address user1) {
