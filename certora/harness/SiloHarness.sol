@@ -102,5 +102,18 @@ contract SiloHarness is Silo {
         IShareToken.ShareTokenStorage storage $ = ShareTokenLib.getShareTokenStorage();
         return $.silo;
     }
+
+    function getSiloConfigAddressFromStorage() external view returns(address _siloConfig) {
+        IShareToken.ShareTokenStorage storage $ = ShareTokenLib.getShareTokenStorage();
+        _siloConfig = address($.siloConfig);
+    }
+
+    function getSiloProtectedAndCollateralAssets() external view returns (
+        uint256 protectedAssets, uint256 collateralAssets
+    ) {
+        ( , ,protectedAssets , collateralAssets, ) = Views.getSiloStorage();
+
+        return (protectedAssets, collateralAssets);
+    }
     
 }

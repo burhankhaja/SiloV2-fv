@@ -10,6 +10,9 @@ using ShareProtectedCollateralToken0 as shareProtectedCollateralToken0;
 using SiloConfig as siloConfig;
 
 methods {
+
+
+
     // ---- `envfree` ----------------------------------------------------------
     function Token0.balanceOf(address) external returns(uint256) envfree;
     function Silo0.balanceOf(address) external returns(uint256) envfree;

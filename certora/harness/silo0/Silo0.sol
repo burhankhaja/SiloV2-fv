@@ -9,8 +9,19 @@ import {ISiloFactory} from "silo-core/contracts/interfaces/ISiloFactory.sol";
 import {ShareTokenLib} from "silo-core/contracts//lib/ShareTokenLib.sol";
 import {SiloERC4626Lib} from "silo-core/contracts//lib/SiloERC4626Lib.sol";
 import {IShareToken} from "silo-core/contracts/interfaces/IShareToken.sol";
+// import "silo-core/contracts/lib/ShareCollateralTokenLib.sol";
 
 contract Silo0 is SiloHarness {
     constructor(ISiloFactory _siloFactory) SiloHarness(_siloFactory) {}
+
+     function getHookReceiver() external view returns (address) {
+        IShareToken.ShareTokenStorage storage $ = ShareTokenLib.getShareTokenStorage();
+        return $.hookSetup.hookReceiver;
+    }
+
+    //  function isSolventAfterCollateralTransfer_Harness(address _sender) external returns (bool isSolvent) {
+    //      IShareToken.ShareTokenStorage storage $ = ShareTokenLib.getShareTokenStorage();
+    //     return $.isSolventAfterCollateralTransfer(_sender);
+    //  } ===> causes ERRORS
 
 }
