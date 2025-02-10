@@ -72,7 +72,7 @@ require _receiver != _owner;
 
 function safeTransferFromCVL(address _from, address _to, uint256 _amount)  returns bool {
     env e;
-    require _receiver != e.msg.sender;
+    require _to != e.msg.sender && _from != _to;
 
     assetTokenBalances[_from] = assetTokenBalances[_from] - _amount;
     assetTokenBalances[_to] = assetTokenBalances[_to] + _amount;
