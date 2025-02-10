@@ -11,11 +11,11 @@ methods {
     ) internal => convertToSharesCVL() expect uint256;
 
  
-    function _.getConfigsForSolvency(address) external => NONDET ; //@audit make sure to later reason about this 
+    function _.getConfigsForSolvency(address) external => NONDET ; 
 
     function _.maxLiquidation(address _siloConfig, address _borrower) external  => NONDET;
 
-    function  _.previewRedeem(uint256 _shares, ISilo.CollateralType _collateralType)  external => NONDET;//@audit later make sure to add boorrow and other funcs with just empty imp just in case method change mutation is used
+    function  _.previewRedeem(uint256 _shares, ISilo.CollateralType _collateralType)  external => NONDET;
 
     function _.repay(uint256 _assets, address _borrower)  external => repayCVL(_assets, _borrower) expect bool;
 
@@ -44,31 +44,7 @@ methods {
 
     function _.revertIfError(bytes4 _selector)  external=> revertIfErrorCVL(_selector) expect (bool);
 
-    /*
-    MAY BE CHANGE DISPATCHES OF THESE FUNCTIONS
-
-     function getConfigsForSolvency(address) returns (ISiloConfig.ConfigData, ISiloConfig.ConfigData) =>silo1 and silo0 as coll and debtconfigs// DISPATCHER(true); //// or maybe require siloConfig.getDebtSilo(e, _borrower) == silo0
-    //   function getShareTokenStorage() internal pure returns (IShareToken.ShareTokenStorage
-
-
-//DONE::::::
-     function forwardTransferFromNoChecks(address _from, address _to, uint256 _amount)
-        external => DISPATCHER(true);
-    
-
-
-
-DONE:::    convertToShares => returns > 1 :::::maybe this could return lower values and that might mess up verification, instead of nondet make sure > 0 is always returned
-
-    
-    */
-    // function _.forwardTransferFromNoChecks(address _from, address _to, uint256 _amount) external => DISPATCHER(true);
-    //  function _.getConfigsForSolvency(address) external  => DISPATCHER(true);
-
-     //=======================================
-    //  function _.afterAction(address _silo, uint256 _action, bytes  _inputAndOutput) external => NONDET;
-     //===================
-     function _.safeTransfer(address token, address _to,  uint _amount) internal => safeTransferCVL(_to, _amount) expect bool;
+    function _.safeTransfer(address token, address _to,  uint _amount) internal => safeTransferCVL(_to, _amount) expect bool;
 
 }
 
@@ -119,16 +95,6 @@ rule AssetsUptoMaxCoverageAreTakenFromLiquidator {
     assert LiquidatorAssetBalanceAfter < LiquidatorAssetBalanceBefore && LiquidatorAssetBalanceAfter >= LiquidatorAssetBalanceBefore - _maxDebtToCover, "assets tokens must be taken from liquidator but not more than his expected max coverage limit";
 }
 
-
-//spec
-
-/*
-if receiveStoken then liquidator must receive share tokens, and no underlying assets
-otherwise liquidator must receive underlying assets, and no share tokens  &&&& the share balances of liquidation module must remain same as before
-
-*/
-
-//@audit ::: examine :: https://prover.certora.com/output/951980/f8e86e12901647229e9dae2c704c18bf?anonymousKey=b327c2f11a47552ed016df27fbf89426ac12967f
 
 rule LiquidatorMustOnlyReceiveShareTokensWhileChoosingReceiveSToken {
     env e;
@@ -190,7 +156,6 @@ rule LiquidatorMustOnlyReceiveUnderlyingAssetsWhileChoosingNotReceiveSToken {
 
 }
 
-//@audit :: examine :: https://prover.certora.com/output/951980/b812f1fd75b140eebf52c096fd5a717b?anonymousKey=25f12c015ce2bc22272ce0854bcdb97897f36bb2
 rule PartialLiquidationAlwaysBurnsSharesForExchangeOfUnderlyingAssets {
     env e;
     address _collateralAsset;
