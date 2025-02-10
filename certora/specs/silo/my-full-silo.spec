@@ -6,6 +6,8 @@ import "./access-single-silo.spec";
 using Token0 as assetToken0; 
 using Silo0 as silo_0;
 using ShareProtectedCollateralToken0 as protectedShares_0;
+using ShareDebtToken0 as debt_0;
+
 
 methods {
 
@@ -66,55 +68,38 @@ rule flashLoanIntegrity {
 
 //==========================================================================================//==========================================================================================//==========================================================================================//==========================================================================================//==========================================================================================//==========================================================================================//==========================================================================================
 
-//@doc: burn mutation:
-/// sharecollateral tokens were burnt (supply decreased) only and only due to either withdraw*2 / redeem*2 or transition collateral functions
-// cant verify with e.msg.sender since silo is intermediary msg.sender to the the burn function not the tx.origin one
-//@note easy one:
-// $.totalAssets[ISilo.AssetType(uint256(_args.collateralType))] = totalAssets - assets; 
-//@note if shareCollateral tokens were burnt then $.totalAssets[collateraltype] also decreased
-//can do it in inverse too for mint mutation!!!
-//@audit-issue problems could arize with lib functions like convertToAssetsOrToShares():: that will give 0 value for shares while nonzero for assets , make sure to restrict them equal 
+//@doc: burn mutation: @later after validity is confirmed @audit do a full mutation test on burn mutation below one
 
-//@audit-issue fails :: https://prover.certora.com/output/951980/6c323e9085894bd7a875ab9f37d8055b/?anonymousKey=ee53ec7c78cde3f9afdaaf7a9a345dcefb99433f
-// remember to explicity tell msg.sender not silo via harness, check mint() violation
-// other things violate it too //// transfer(to=ecrecover) could be because his balance == maxuint then transfer of one violate /// no no transfer violates because supply cant be 0 and other people have some assets ||||| u neec to requireinvariant from setup about 
+//@audit :: examine :: https://prover.certora.com/output/951980/468bf6481509494db310ede4fbc3d908?anonymousKey=13b700fe1aba512f6696cb2f197d24c1210bf03a
+rule SiloAssetBalanceMustDecreaseOnEveryBurningOfSupply {
+    env e; method f; calldataarg args;
+    uint collateralSharesSupplyBefore = silo_0.totalSupply(e);
+    uint siloAssetBalanceBefore = assetToken0.balanceOf(e, silo_0);
+    require e.msg.sender != silo_0;
 
-// &&& decimals() cause some sort of vacuity /// make ure to do _.decimals() => ALWAYS(18) in certora/specs/setup/summaries/tokens_dispatchers.spec
-//@audit do it at last
+    f(e, args);
 
-// rule TotalCollateralAssetsMustIncreaseDecreaseWithActualShareCollateralSupply {
+    uint collateralSharesSupplyAfter = silo_0.totalSupply(e);
+    uint siloAssetBalanceAfter = assetToken0.balanceOf(e, silo_0);
 
+    assert collateralSharesSupplyAfter < collateralSharesSupplyBefore => siloAssetBalanceAfter < siloAssetBalanceBefore, "Silo's asset balance must decrease on every burning of supply";
+}
 
-//     // assert that if sharecollateraltoken supply decreased then the $.totalAssets(collatertype) of either of the two must decrese;
+rule SiloAssetBalanceMustIncreaseOnEveryMintingOfSupply {
+    env e; method f; calldataarg args;
+    uint collateralSharesSupplyBefore = silo_0.totalSupply(e);
+    uint siloAssetBalanceBefore = assetToken0.balanceOf(e, silo_0);
+    require e.msg.sender != silo_0;
 
-//     // // problem one : how do you get $.totalAssets(collateralType) ?
-//     // //@note dont forget to require silo to be silo0 .// maybe take help from liquidation.spec
-//     // //require config.getDebtSilo(e, _borrower) == debtSilo0; |||| i might have to create partial parametric rule in order to do that
-//     // // or should i check on both silo's 
-//     //@audit-issue i think i might have to filter main burn function that is actually called or since e.msg.sender could be the accepted one ;;; no no ut require e.msg.sender != silo
+    f(e, args);
 
-//     env e;  method f; calldataarg args;
-//     uint256 IGNORE; uint256 collateralAssetsBefore; uint256 collateralAssetsAfter;
+    uint collateralSharesSupplyAfter = silo_0.totalSupply(e);
+    uint siloAssetBalanceAfter = assetToken0.balanceOf(e, silo_0);
 
-    
-//     // pre
-
-//     uint collaterSharesSupplyBefore = silo_0.totalSupply(e);
-//     (IGNORE, collateralAssetsBefore) = getSiloProtectedAndCollateralAssets(e);
-
-//     require e.msg.sender != silo_0;
-
-//     // ENTRY
-//     f(e,args);
+    assert collateralSharesSupplyAfter > collateralSharesSupplyBefore => siloAssetBalanceAfter > siloAssetBalanceBefore, "Silo's asset balance must increase on every minting of supply";
+}
 
 
-//     //POST STATE
-//     uint collaterSharesSupplyAfter = silo_0.totalSupply(e);
-//     (IGNORE, collateralAssetsAfter) = getSiloProtectedAndCollateralAssets(e);
-
-//     assert collateralAssetsAfter > collateralAssetsBefore <=> collaterSharesSupplyAfter > collaterSharesSupplyBefore, "collateral totalAssets state must be correlated with the actual collateral supply"; //@audit check if it catches burn mutation, remember visibly burn seems diff case but since it is correlation, we gonna catch that
-
-// } // zxc
 
 //==========================================================================================//==========================================================================================//==========================================================================================//==========================================================================================//==========================================================================================//==========================================================================================//==========================================================================================
 
@@ -383,50 +368,6 @@ rule ReceiverGetsExactAssetsOnWithdrawalAndOwnersSharesDecrease {
     
 }
 
-//@audit-issue :: examine :: https://prover.certora.com/output/951980/c0e8410f923a4169b3cc189155f0d0e5?anonymousKey=796600f934197ed1aa27845562762230ea947f92
-// transfer --> cause require assetbalace of silo to be <= totalsupply
-//@audit-issue `OutOfResources`   ---> SPLIT THIS RULE UP
-//@note later make sure some of these crazy rules have different conf files
-// rule ExactOwnerSharesAreBurntWhileReceiversAssetBalanceIncrease {
-//     env e; 
-//     uint256 _shares; address _receiver; address _owner; ISilo.CollateralType _collateralType; 
-    
-
-//     uint ownerCollateralBalanceBefore = silo_0.balanceOf(e, _owner);
-//     uint assetBalanceOfReceiverBefore = assetToken0.balanceOf(e, _receiver);
-
-//     // require ownerCollateralBalanceBefore <= silo_0.totalSupply(e) && assetBalanceOfReceiverBefore <= assetToken0.totalSupply(e);
-//     require _collateralType == ISilo.CollateralType.Collateral;
-
-//     require _receiver != silo_0;
-
-//     //==============================================
-//     require assetBalanceOfReceiverBefore + assetToken0.balanceOf(e, silo_0) <= silo_0.totalSupply(e);
-//     require ownerCollateralBalanceBefore <= silo_0.totalSupply(e);
-
-//     //@audit examine :: https://prover.certora.com/output/951980/d68cf9acb6dd4899ae98d7c2d6326ed6?anonymousKey=377baf0b03f84f0e461342dd03e06410f93b020f
-
-//     //==========================================
- 
-
-     //  R O O T       S T A T E
-    // storage initState = lastStorage;
-
-    // redeem(e,_shares, _receiver, _owner) at initState;
-    // uint assetBalanceOfReceiverAfterRedeem_1 = assetToken0.balanceOf(e, _receiver);
-    // uint ownerCollateralBalanceAfterRedeem_1 = silo_0.balanceOf(e, _owner);
-
-
-    // redeem( e, _shares,  _receiver,  _owner,  _collateralType) at initState;
-    // uint assetBalanceOfReceiverAfterRedeem_2 = assetToken0.balanceOf(e, _receiver);
-    // uint ownerCollateralBalanceAfterRedeem_2 = silo_0.balanceOf(e, _owner);
-
-    // assert assetBalanceOfReceiverAfterRedeem_1 == assetBalanceOfReceiverAfterRedeem_2 && assetBalanceOfReceiverAfterRedeem_1 > assetBalanceOfReceiverBefore , "redeeming must increase receivers asset balance with variable amounts";
-
-//     assert ownerCollateralBalanceAfterRedeem_2 == ownerCollateralBalanceAfterRedeem_1 && ownerCollateralBalanceAfterRedeem_2 == ownerCollateralBalanceBefore - _shares, "redeeming must always burn owners shares with the exact given _shares amount";
-
-
-// } //@audit this rule has been split into two below, after they are verified remove this
 
 //@audit-ok
 rule ExactOwnerSharesAreBurntWhileReceiversAssetBalanceIncreaseOnFirstRedeem {
@@ -487,15 +428,318 @@ rule OnlyHookReceiverCanCallOnBehalfOfSilo {
 }
 
 
-//@audit later 9 FEB
-// rule noReinitiaization {
-//     env e;
-//     ISiloConfig _config;;
-//     require getSiloConfigAddressFromStorage(e) != address(0);
+//@audit-ok
+rule SiloCantBeReInitialized {
+    env e;
+    address _config;
+    require getSiloConfigAddressFromStorage(e) != 0;
+
+    initialize@withrevert(e, _config);
+    bool reverted = lastReverted;
+
+    assert reverted, "silo can't be re-initialized";
+
+}
+
+//@audit-issue for borrowing related rules create different spec that is exact like max-correctness.conf since i need token1 logic for collateralsilo logics do that....or just change this conf
+
+//@audit-ok
+rule SimpleBorrowIncreasesGivenAssetAmountsToReceiverAndRegistersDebtForBorrower {
+    env e;
+    uint256 _assets; address _receiver; address _borrower;
+
+    uint256 assetBalanceOfReceiverBeforeBorrow = assetToken0.balanceOf(e, _receiver);
+    uint debtBalanceOfBorrowerBeforeBorrow = debt_0.balanceOf(e, _borrower);
+
+    require debtBalanceOfBorrowerBeforeBorrow < debt_0.totalSupply(e);
+    require assetBalanceOfReceiverBeforeBorrow + assetToken0.balanceOf(e, silo_0) <= silo_0.totalSupply(e);
+
+    require _receiver != silo_0;
+    
+    
+    borrow(e, _assets, _receiver, _borrower);
+
+    uint256 assetBalanceOfReceiverAfterBorrow = assetToken0.balanceOf(e, _receiver);
+    uint debtBalanceOfBorrowerAfterBorrow = debt_0.balanceOf(e, _borrower);
+
+    assert assetBalanceOfReceiverAfterBorrow == assetBalanceOfReceiverBeforeBorrow + _assets, "exact given assets must be borrowed to the receiver";
+
+    assert debtBalanceOfBorrowerAfterBorrow > debtBalanceOfBorrowerBeforeBorrow, "debt must be registered for borrower after borrowing";
 
 
-// }
-// rule borrow, repay{} &&&&&&& transitioncollateral {}
+}
+
+//@audit-ok
+rule BorrowSharesRegisterExactGivenDebtForBorrowerAndIncreaseReceiversAssets {
+    env e;
+    uint256 _shares; address _receiver; address _borrower;
+
+    uint256 assetBalanceOfReceiverBeforeBorrow = assetToken0.balanceOf(e, _receiver);
+    uint debtBalanceOfBorrowerBeforeBorrow = debt_0.balanceOf(e, _borrower);
+
+    require debtBalanceOfBorrowerBeforeBorrow < debt_0.totalSupply(e);
+    require assetBalanceOfReceiverBeforeBorrow + assetToken0.balanceOf(e, silo_0) <= silo_0.totalSupply(e);
+
+    require _receiver != silo_0;
+
+    borrowShares(e, _shares, _receiver, _borrower);
+
+    uint256 assetBalanceOfReceiverAfterBorrow = assetToken0.balanceOf(e, _receiver);
+    uint debtBalanceOfBorrowerAfterBorrow = debt_0.balanceOf(e, _borrower);
+
+    assert assetBalanceOfReceiverAfterBorrow > assetBalanceOfReceiverBeforeBorrow , "receivers asset balance must increase";
+
+    assert debtBalanceOfBorrowerAfterBorrow ==  debtBalanceOfBorrowerBeforeBorrow + _shares, "debt must be increased for borrower by the exact given shares amounts";
+}
+
+//@audit-ok
+rule BorrowingMustDecreaseDebtAllowancesOfBorrowerWithTheCallingSpender {
+    env e; uint _assets; uint256 _shares; address _receiver; address _borrower;
+    uint debtAllowancesBefore = debt_0.allowance(e, _borrower, e.msg.sender);
+
+    require e.msg.sender != _borrower && debtAllowancesBefore < max_uint256;
+
+    //  R O O T       S T A T E
+    storage initState = lastStorage;
+
+    borrow(e, _assets, _receiver, _borrower);
+    bool debtAllowancesDecreasedAfterBorrow = debt_0.allowance(e, _borrower, e.msg.sender) < debtAllowancesBefore;
+
+
+    borrowShares(e, _shares, _receiver, _borrower) at initState;
+    bool debtAllowancesDecreasedAfterBorrowShares = debt_0.allowance(e, _borrower, e.msg.sender) < debtAllowancesBefore;
+
+    assert debtAllowancesDecreasedAfterBorrow && debtAllowancesDecreasedAfterBorrowShares, "debt allowances of borrower to the msg.sender must decrease after borrowing";
+}
+
+
+//@audit-ok
+rule BorrowSameAssets_TransferAndAllowanceIntegrity {
+    //  borrowSameAsset(uint256 _assets, address _receiver, address _borrower)
+    /*
+    spec: 
+     - receivers assets must increase, assuming he aint silo_0 itself with given amount
+     - borrowers debt must increase
+     - allowances of _borrower to msg.sender must decrease, assuming msg.sender != _borrower itself and allowances < max_uint256
+     - 
+
+
+     @note later
+     - this silo is set to collateral silo
+     - interest is accrued for this silo
+
+*/
+    env e; uint256 _assets; address _receiver; address _borrower;
+
+    uint256 assetBalanceOfReceiverBeforeBorrow = assetToken0.balanceOf(e, _receiver);
+    uint debtBalanceOfBorrowerBeforeBorrow = debt_0.balanceOf(e, _borrower);
+    uint debtAllowancesBefore = debt_0.allowance(e, _borrower, e.msg.sender);
+
+    
+
+    require assetBalanceOfReceiverBeforeBorrow + assetToken0.balanceOf(e, silo_0) <= silo_0.totalSupply(e);
+    require debtBalanceOfBorrowerBeforeBorrow < debt_0.totalSupply(e);
+    require e.msg.sender != _borrower && debtAllowancesBefore < max_uint256;
+    require _receiver != silo_0;
+
+    borrowSameAsset(e, _assets, _receiver, _borrower);
+
+    uint256 assetBalanceOfReceiverAfterBorrow = assetToken0.balanceOf(e, _receiver);
+    uint debtBalanceOfBorrowerAfterBorrow = debt_0.balanceOf(e, _borrower);
+
+    bool assetBalanceOfReceiverIncreasedWithGivenAssets = assetBalanceOfReceiverAfterBorrow == assetBalanceOfReceiverBeforeBorrow + _assets;
+    bool debtBalanceOfBorrowerIncreased = debtBalanceOfBorrowerAfterBorrow > debtBalanceOfBorrowerBeforeBorrow;
+
+    assert assetBalanceOfReceiverIncreasedWithGivenAssets && debtBalanceOfBorrowerIncreased, "exact given assets must be borrowed to the receiver and debt must be registered for borrower after borrowing";
+
+    assert debt_0.allowance(e, _borrower, e.msg.sender) < debtAllowancesBefore, "debt allowances of borrower to the msg.sender must decrease after borrowing";
+
+}
+
+//@audit-ok
+rule repayMustDecreaseBorrowersDebtWithExactGivenRepayersAssets {
+    /*
+    - msg.sender's assets must decrease with given amounts , assuming he aint sill_0 itself
+    - borrowers debt tokens must decrease
+    - interest must be accrued for this silo
+    */
+    env e; uint256 _assets; address _borrower;
+    
+    require e.msg.sender != silo_0;
+
+    uint256 assetBalanceOfRepayerBeforeRepay = assetToken0.balanceOf(e, e.msg.sender);
+    uint debtBalanceOfBorrowerBeforeRepay = debt_0.balanceOf(e, _borrower);
+
+    require assetBalanceOfRepayerBeforeRepay + assetToken0.balanceOf(e, silo_0) <= silo_0.totalSupply(e);
+    require debtBalanceOfBorrowerBeforeRepay < debt_0.totalSupply(e);
+
+    repay(e, _assets, _borrower);
+
+    uint256 assetBalanceOfRepayerAfterRepay = assetToken0.balanceOf(e, e.msg.sender);
+    uint debtBalanceOfBorrowerAfterRepay = debt_0.balanceOf(e, _borrower);
+
+    assert assetBalanceOfRepayerAfterRepay < assetBalanceOfRepayerBeforeRepay&& debtBalanceOfBorrowerAfterRepay < debtBalanceOfBorrowerBeforeRepay, "repayer's assets must decrease with given amounts and borrowers debt must decrease after repaying"; //@note :: examine :: https://prover.certora.com/output/951980/ff5afc109981452f9374d7fd0a899252?anonymousKey=ca1e253d7bf71324d3f6717c7ea225251b87e3db
+
+    //@audit later: for specific case, // assert assetBalanceOfRepayerAfterRepay == assetBalanceOfRepayerBeforeRepay - _assets && debtBalanceOfBorrowerAfterRepay < debtBalanceOfBorrowerBeforeRepay, "repayer's assets must decrease with given amounts and borrowers debt must decrease after repaying";
+
+}
+//@audit-ok
+rule repaySharesMustDecreaseExactAmountsOfBorrowersDebtWithAnyAmountOfRepayerAssets {
+    env e; uint256 _shares; address _borrower;
+    
+    require e.msg.sender != silo_0;
+
+    uint256 assetBalanceOfRepayerBeforeRepay = assetToken0.balanceOf(e, e.msg.sender);
+    uint debtBalanceOfBorrowerBeforeRepay = debt_0.balanceOf(e, _borrower);
+
+    require assetBalanceOfRepayerBeforeRepay + assetToken0.balanceOf(e, silo_0) <= silo_0.totalSupply(e);
+    require debtBalanceOfBorrowerBeforeRepay < debt_0.totalSupply(e);
+
+    require debtBalanceOfBorrowerBeforeRepay > _shares; // beta :: examine :: https://prover.certora.com/output/951980/ace5dbf448694961a0c24465a697d333?anonymousKey=d7ddb22a2b32f408c3083d575389e69bc98478d8
+
+    repayShares(e, _shares, _borrower);
+
+    uint256 assetBalanceOfRepayerAfterRepay = assetToken0.balanceOf(e, e.msg.sender);
+    uint debtBalanceOfBorrowerAfterRepay = debt_0.balanceOf(e, _borrower);
+
+
+    assert assetBalanceOfRepayerAfterRepay < assetBalanceOfRepayerBeforeRepay  && debtBalanceOfBorrowerAfterRepay == debtBalanceOfBorrowerBeforeRepay - _shares, "repayer's assets must decrease with any amounts such thatborrowers debt decrease with the exact given share amounts after repayingShares";
+}
+
+
+//@audit-ok :: examine :: https://prover.certora.com/output/951980/486cbd62622b4c9dac97057beb801cb6?anonymousKey=8c1197c3009cb7466f9c55790e3d5c6829253583
+rule AssetBalancesOfSiloMustRemainSameAfterCollateralTransition {
+    env e; 
+    uint256 _shares;
+    address _owner;
+    ISilo.CollateralType _transitionFrom;
+
+    uint256 assetBalanceOfSiloBeforeTransition = assetToken0.balanceOf(e, silo_0);
+
+    transitionCollateral(e, _shares, _owner, _transitionFrom);
+
+    uint256 assetBalanceOfSiloAfterTransition = assetToken0.balanceOf(e, silo_0);
+
+    assert assetBalanceOfSiloBeforeTransition == assetBalanceOfSiloAfterTransition, "asset balances of silo must remain same after transition collateral";
+}
+
+//@audit-ok :: examine :: https://prover.certora.com/output/951980/793485737d9446c09db514e4f84ef257?anonymousKey=64dc126a28e023651d1862b9bca20e3a502f801a
+rule  TransitionCollateralMustTransitionExactGivenSharesForAnyAmountOfOtherCollateralType  {
+    /*
+   - exact given share amounts of transitionfrom collateral is burnt from owner
+   - any amounts of transitionto collateral is minted to the owner
+   - if msg.sender != owner && !max_allowance => allowances of owner to msg.sender must decrease for `transition` collateral
+    */
+
+    env e;
+    uint256 _shares;
+    address _owner;
+    ISilo.CollateralType _transitionFrom;
+    
+    uint fromTypeBalanceBefore =  _transitionFrom == ISilo.CollateralType.Collateral ? silo_0.balanceOf(e, _owner) : protectedShares_0.balanceOf(e, _owner);
+
+    uint toTypeBalanceBefore = _transitionFrom == ISilo.CollateralType.Collateral ? protectedShares_0.balanceOf(e, _owner) : silo_0.balanceOf(e, _owner);
+
+    if (_transitionFrom == ISilo.CollateralType.Collateral) {
+        require fromTypeBalanceBefore <= silo_0.totalSupply(e) && fromTypeBalanceBefore > 0;
+        require toTypeBalanceBefore <= protectedShares_0.totalSupply(e);
+    } else {
+       require fromTypeBalanceBefore <= protectedShares_0.totalSupply(e) && fromTypeBalanceBefore > 0;
+       require toTypeBalanceBefore <= silo_0.totalSupply(e);
+    }
+
+
+
+    transitionCollateral(e, _shares, _owner, _transitionFrom);
+
+    //AFTER
+    uint fromTypeBalanceAfter =  _transitionFrom == ISilo.CollateralType.Collateral ? silo_0.balanceOf(e, _owner) : protectedShares_0.balanceOf(e, _owner);
+
+    uint toTypeBalanceAfter = _transitionFrom == ISilo.CollateralType.Collateral ? protectedShares_0.balanceOf(e, _owner) : silo_0.balanceOf(e, _owner);
+
+    assert fromTypeBalanceAfter == fromTypeBalanceBefore - _shares && toTypeBalanceAfter > toTypeBalanceBefore , "exact given share amounts of transitionfrom collateral must be burnt from owner and any amounts of transitionto collateral must be minted to the owner";
+
+}
+
+//@audit-ok :: examine :: https://prover.certora.com/output/951980/0666ffede970424a82643a6d5692b903?anonymousKey=29516d665693c52d3c54f869f2ac5261ff75764f
+rule OnlyAllowedOnesCanTransitionCollateralOnBehalfOfOthers {
+    env e;
+    uint256 _shares;
+    address _owner;
+    ISilo.CollateralType _transitionFrom;
+    
+
+    uint allowanceBefore = _transitionFrom == ISilo.CollateralType.Collateral ? silo_0.allowance(e, _owner, e.msg.sender) : protectedShares_0.allowance(e, _owner, e.msg.sender);
+
+    require e.msg.sender != _owner;
+    require allowanceBefore < max_uint256;
+
+    transitionCollateral(e, _shares, _owner, _transitionFrom);
+
+    uint allowanceAfter = _transitionFrom == ISilo.CollateralType.Collateral ? silo_0.allowance(e, _owner, e.msg.sender) : protectedShares_0.allowance(e, _owner, e.msg.sender);
+
+    assert allowanceAfter < allowanceBefore, "allowances of owner to msg.sender must decrease after transitioning collateral";
+}
+
+
+
+
+
+
+// rule mint/burn pubilc mutation
+
+// rule Bug {}
+// rule PartialLiquidation >.....????
+
+
+
+
+// rule hasdebtinothersilo {}
+// rule setcollateraltothisthatsilo {}
+// rule transferwithsolvency rule
+// rule interestaccrual etc
+
+
+
+
+/*@audit later
+
+rule borrowAndBorrowSharesSetCollatoralOfUserToSilo1 {}
+rule borrowSameAssetsSetsBorrowsCollateralToThisSilo {}
+
+or maybe write parametric rule where you verify , certain method was called and user's collateral was set to :
+- this silo (silo0)
+- other silo (silo1)
+
+*/
+
+
+//@note high level rule zxc
+//@audit :: examine :: https://prover.certora.com/output/951980/73609f75533e4d82abf63be961315796?anonymousKey=236137d206a85f894185cf6ce804c59f6d290c78
+//@audit-issue violated ::::::: fix
+rule BorrowersCantHaveDebtInBothSilosAtOnce {
+    env e; method f; calldataarg args; address _borrower;
+    uint borrowerDebtBefore = debt_0.balanceOf(e, _borrower);
+    require siloConfig.hasDebtInOtherSilo(e, silo_0, _borrower);
+
+
+    f(e,args);
+    
+    uint borrowerDebtAfter = debt_0.balanceOf(e, _borrower);
+    
+    assert borrowerDebtAfter == borrowerDebtBefore, "user cant have debt in silo0 and silo1 at once,";
+
+} 
+
+// rule borrowAndBorrowSharesSetUserCollaterToSilo1 {} // can it be turned into highlevel rule, understand why borrowshares vs borrowassets do that check ..... 
+
+//@audit later::: rule allowanceDecreaseBorrowSameAssets {}
+
+
+// rule ltvIsCheckedForSolvencyInAllTypesOfBorrow {} @audit later ::: we need _issolvent controlled summarization for this
+// rule interestIsAccruedForBothSilosInBorrowAndBorrowShares {} @audit later:::: throw in parametric one
+
+// rule borrow, && borrowsameAssets && repay{} &&&&&&& transitioncollateral {} 
 // rule highlevel mint burn , deposit-withdraw high, interest rate, debt related high level !!!
 
 
@@ -508,34 +752,34 @@ rule OnlyHookReceiverCanCallOnBehalfOfSilo {
 //@audit later
 // // // //@audit-ok previous for mint and deposits
 // //@audit-issue maybe be add withdraw/redeem functions too and make parametric rule with filtered block of only deposit/mint && withdraw/redeem functions and assume before state then verify interest is accrued ????
-// rule InterestIsAccruedOnDepositAndMint {
-//     env e;
-//     uint _assets;
-//     address _receiver;
-//     uint _mintShares;
-//     ISilo.CollateralType _collateralType;
+rule InterestIsAccruedOnDepositAndMint {
+    env e;
+    uint _assets;
+    address _receiver;
+    uint _mintShares;
+    ISilo.CollateralType _collateralType;
 
-//     require getSiloDataInterestRateTimestamp(e) < e.block.timestamp;
-//     require e.block.timestamp < max_uint64; // if still fails check try catch block
+    require getSiloDataInterestRateTimestamp(e) < e.block.timestamp;
+    require e.block.timestamp < max_uint64; // if still fails check try catch block
 
-//     //ROOT STATE
-//     storage initState = lastStorage;
+    //ROOT STATE
+    storage initState = lastStorage;
 
-//     deposit(e, _assets, _receiver);
-//     bool interestAccrued_1 = getSiloDataInterestRateTimestamp(e) == e.block.timestamp;
+    deposit(e, _assets, _receiver);
+    bool interestAccrued_1 = getSiloDataInterestRateTimestamp(e) == e.block.timestamp;
 
-//     deposit(e, _assets, _receiver, _collateralType) at initState;
-//     bool interestAccrued_2 = getSiloDataInterestRateTimestamp(e) == e.block.timestamp;
+    deposit(e, _assets, _receiver, _collateralType) at initState;
+    bool interestAccrued_2 = getSiloDataInterestRateTimestamp(e) == e.block.timestamp;
 
-//     mint(e,_mintShares, _receiver) at initState; 
-//     bool interestAccrued_3 = getSiloDataInterestRateTimestamp(e) == e.block.timestamp;
+    mint(e,_mintShares, _receiver) at initState; 
+    bool interestAccrued_3 = getSiloDataInterestRateTimestamp(e) == e.block.timestamp;
 
-//     mint(e,_mintShares, _receiver, _collateralType) at initState; 
-//     bool interestAccrued_4 = getSiloDataInterestRateTimestamp(e) == e.block.timestamp;
+    mint(e,_mintShares, _receiver, _collateralType) at initState; 
+    bool interestAccrued_4 = getSiloDataInterestRateTimestamp(e) == e.block.timestamp;
 
-//     assert interestAccrued_1 && interestAccrued_2 && interestAccrued_3 && interestAccrued_4, "All deposit and mint functions must accrue pending interests!!";
+    assert interestAccrued_1 && interestAccrued_2 && interestAccrued_3 && interestAccrued_4, "All deposit and mint functions must accrue pending interests!!";
     
-// }
+}
 
 
 
