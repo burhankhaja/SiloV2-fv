@@ -70,12 +70,40 @@ rule flashLoanIntegrity {
 
 //@doc: burn mutation: @later after validity is confirmed @audit do a full mutation test on burn mutation below one
 
+/*
+voilated in multiple 
+ - burn: ShareToken._getSilo() ↪ 0x1f8f ::: instead of e.ms.sender != silo_0 , do this from harenss to get it directly::: can easily get with sharetoken.silo() ; /?????? => e.msg.sender != silo_0.silo(e)
+ - callOnBehalfOfSilo: , require msg.sender != hook receiver copy from its rule and boom it wont get triggered
+ - transitionCollateral: explicitly filter this method, since transitioning doesn't decrease balance
+ - OPTIMIZATION :::: filter isView functions for quick run
+ - redeem and withdraw fail because :::: the receiver is set to silo_0 itself , partially parameterize it >>>>> before that verify whether other violations are fixed as this will take lil bit of more time  ||| @note reason about if this is required in mint rule too
+*/
+
 //@audit :: examine :: https://prover.certora.com/output/951980/468bf6481509494db310ede4fbc3d908?anonymousKey=13b700fe1aba512f6696cb2f197d24c1210bf03a
-rule SiloAssetBalanceMustDecreaseOnEveryBurningOfSupply {
-    env e; method f; calldataarg args;
+//@audit verifying this is important than mint rule ........ do it later 
+//@audit :::: cmd ::::: certoraRun certora/config/silo/Silo_verified/silo0.conf --rule "SiloAssetBalanceMustDecreaseOnEveryBurningOfSupply" 
+
+//@audit  :: this run will violate on withdraw/redeem -> expected ===> make sure others methods dont revert it , it is just debugging purpose,,,,, if everything correct modifty this rule into partially parametric such that receiver is not silo_0 itself into withdraw/redeem functions!!! ::: https://prover.certora.com/output/951980/1c6fff14089c4893918516d9e078a04c?anonymousKey=d28d99a074ead2479c1b1e08120aae129bdb23d9
+
+// fails::: vacous:: callonbehalfof _____ filter that later:::
+// sharetoken.getSilo returns different silo .... do requier msg.sender != silo and sharetoken.getsilo both
+// or maybe require ShareTokenLib.getShareTokenStorage().silo; to be ===== silo_0.silo(e) ..... 
+// ^^^ add above harness function to silo0.... then check if burn() method violates again....
+
+// quick check :: add only fix to burn() check if it is prevented
+
+
+rule SiloAssetBalanceMustDecreaseOnEveryBurningOfSupply(method f) filtered {
+     f -> (f.selector != sig:transitionCollateral(uint256,address,ISilo.CollateralType).selector &&  !f.isView )
+}{
+    env e;   calldataarg args;
     uint collateralSharesSupplyBefore = silo_0.totalSupply(e);
     uint siloAssetBalanceBefore = assetToken0.balanceOf(e, silo_0);
-    require e.msg.sender != silo_0;
+    
+    //fix
+    require e.msg.sender != silo_0.silo(e);
+    require e.msg.sender != getHookReceiver(e); //@audit if vacuity is a thing maybe try , assert msg.sender != this => this way paths are always reachable for the prover.....
+
 
     f(e, args);
 
@@ -85,6 +113,11 @@ rule SiloAssetBalanceMustDecreaseOnEveryBurningOfSupply {
     assert collateralSharesSupplyAfter < collateralSharesSupplyBefore => siloAssetBalanceAfter < siloAssetBalanceBefore, "Silo's asset balance must decrease on every burning of supply";
 }
 
+
+//@audit-issue cant understand rn why it fails on redeem funcs::: https://prover.certora.com/output/951980/468bf6481509494db310ede4fbc3d908?anonymousKey=13b700fe1aba512f6696cb2f197d24c1210bf03a
+//@audit do all other required checks
+// @audit then make sure this::::: totalsupply of silo_0 < max_uint and greater than 0 , may be underflow / overflow is causing this
+//@audit take another look and withdraw/ redeem funcs before coming back here
 rule SiloAssetBalanceMustIncreaseOnEveryMintingOfSupply {
     env e; method f; calldataarg args;
     uint collateralSharesSupplyBefore = silo_0.totalSupply(e);
