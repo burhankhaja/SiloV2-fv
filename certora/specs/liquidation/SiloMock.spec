@@ -13,8 +13,10 @@ function getExactLiquidationAmounts_CVL() returns (uint256, uint256, uint256, by
         return (withdrawAssetsFromCollateral, withdrawAssetsFromProtected, repayDebtAssets, customError);
 }
 
-function repayCVL(uint256 _repayDebtAssets, address _borrower) {
+function repayCVL(uint256 _repayDebtAssets, address _borrower) returns bool {
     debt[_borrower] = debt[_borrower] - _repayDebtAssets;
+    bool _ignore;
+    return _ignore;
 }
 
 

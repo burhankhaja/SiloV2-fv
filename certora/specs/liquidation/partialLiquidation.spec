@@ -1,3 +1,146 @@
+// using SiloConfig as siloConfig;
+import "./SiloMock.spec";
+
+methods { // 16 UNIQUE NONDET
+//    function  _.forwardTransferFromNoChecks(address, address, uint256) external => NONDET;
+   
+   function _.convertToShares(
+        uint256 _assets,
+        uint256 _totalAssets,
+        uint256 _totalShares,
+        Math.Rounding _rounding,
+        ISilo.AssetType _assetType
+    ) internal => NONDET;
+
+    // function _.accrueInterest() external => NONDET;
+
+    // function _.callSolvencyOracleBeforeQuote()  external => NONDET;
+ 
+    function _.getConfigsForSolvency(address) external => NONDET ; //@audit make sure to later reason about this 
+
+    function _.maxLiquidation(address _siloConfig, address _borrower) external  => NONDET;
+
+    // function  _.redeem(uint256 _shares , address _receiver, address _owner, ISilo.CollateralType  _collateralType)  external => NONDET;
+
+    function  _.previewRedeem(uint256 _shares, ISilo.CollateralType _collateralType)  external => NONDET;//@audit later make sure to add boorrow and other funcs with just empty imp just in case method change mutation is used
+
+
+    function _.repay(uint256 _assets, address _borrower)  external => repayCVL(_assets, _borrower) expect bool;
+
+    function _.turnOffReentrancyProtection() external => NONDET ;  //@audit wt the heck is nondet
+
+    // function _.safeTransferFrom(address _from, address _to, uint256 _amount)  external => NONDET;
+
+    // function _.safeIncreaseAllowance(address _spender, uint256 _amount)  external => NONDET;
+    //@audit later add safetransfer() too ,,, must have and maybe other erc20 too
+    //@audit later make sure tokens are properly dispatched to valid erc20 asset token 0
+
+    // function _.revertIfError(bytes4 _selector)  external => NONDET;
+
+    function _.getExactLiquidationAmounts(ISiloConfig.ConfigData  _collateralConfig, ISiloConfig.ConfigData _debtConfig, address _user, uint256 _maxDebtToCover, uint256 _liquidationFee) external => getExactLiquidationAmounts_CVL() expect (uint256, uint256, uint256, bytes4); 
+
+    function _.turnOnReentrancyProtection() external => NONDET;
+
+
+    function _.getTotalAssetsStorage(ISilo.AssetType) external => NONDET;
+    function _.totalSupply() external => NONDET;
+
+    //==========================================================================
+    function  _.forwardTransferFromNoChecks(address _borrower, address _receiver, uint256 _shares) external => forwardTransferFromNoChecksCVL(_borrower, _receiver, _shares) expect (bool);
+
+    function _.accrueInterest() external => accrueInterestCVL() expect (bool);
+
+    function _.callSolvencyOracleBeforeQuote(ISiloConfig.ConfigData memory) internal => callSolvencyOracleBeforeQuoteCVL() expect (bool);
+    
+
+
+
+
+    function  _.redeem(uint256 _shares , address _receiver, address _owner, ISilo.CollateralType  _collateralType)  external=> redeemCVL(_shares , _receiver, _owner, _collateralType) expect (bool);
+
+
+
+
+
+
+
+    
+    
+
+  
+    function _.safeTransferFrom(address _token, address _from, address _to, uint _amount) internal => safeTransferFromCVL( _from,  _to, _amount) expect (bool);
+
+    function _.safeIncreaseAllowance(address _token, address _spender, uint256 _amount) internal => safeIncreaseAllowanceCVL( _spender,  _amount) expect (bool);
+    //@audit later add safetransfer() too ,,, must have and maybe other erc20 too
+    //@audit later make sure tokens are properly dispatched to valid erc20 asset token 0
+
+    function _.revertIfError(bytes4 _selector)  external=> revertIfErrorCVL(_selector) expect (bool);
+
+}
+
+
+//@audit-ok
+rule BorrowersDebtIsRepaidOnLiquidation {
+    env e;   
+    address _collateralAsset; address _debtAsset; address _borrower; uint256 _maxDebtToCover; bool _receiveSToken;
+
+    mathint borrowerDebtBefore = debt[_borrower];
+    //call
+    liquidationCall(e,_collateralAsset, _debtAsset, _borrower, _maxDebtToCover, _receiveSToken);
+
+    mathint borrowerDebtAfter = debt[_borrower];
+
+
+    assert borrowerDebtAfter < borrowerDebtBefore, "Liquidation must decrease borrowers debt";
+}
+
+
+
+
+
+    
+
+
+
+function forwardTransferFromNoChecksCVL(address _borrower, address _receiver, uint256 _shares) returns bool {
+    bool _ignore; 
+    return _ignore;
+}
+
+function accrueInterestCVL()  returns bool {
+    bool _ignore;
+    return _ignore;
+}
+
+function callSolvencyOracleBeforeQuoteCVL()  returns bool {
+    bool _ignore;
+   return _ignore;
+}
+
+function redeemCVL(uint256 _shares , address _receiver, address _owner, ISilo.CollateralType  _collateralType)  returns bool {
+    bool _ignore;
+    return _ignore;
+}
+
+function safeTransferFromCVL(address _from, address _to, uint256 _amount)  returns bool {
+    bool _ignore;
+    return _ignore;
+}
+
+function safeIncreaseAllowanceCVL(address _spender, uint256 _amount) returns bool  {
+    bool _ignore;
+    return _ignore;
+}
+
+function revertIfErrorCVL(bytes4 _selector)  returns bool {
+    bool _ignore;
+    return _ignore;
+}
+//==============================================================================================================
+//==============================================================================================================
+//==============================================================================================================
+//==============================================================================================================
+
 // import "../setup/CompleteSiloSetup.spec";
 // import "../silo/unresolved.spec";
 // import "../simplifications/Oracle_quote_one_UNSAFE.spec";
@@ -211,75 +354,12 @@
 //==========================================================================================
 //  DEBUG PROBE
 
-// using SiloConfig as siloConfig;
-import "./SiloMock.spec";
-
-methods { // 16 UNIQUE NONDET
-   function  _.forwardTransferFromNoChecks(address, address, uint256) external => NONDET;
-   
-   function _.convertToShares(
-        uint256 _assets,
-        uint256 _totalAssets,
-        uint256 _totalShares,
-        Math.Rounding _rounding,
-        ISilo.AssetType _assetType
-    ) internal => NONDET;
-
-    function _.accrueInterest() external => NONDET;
-
-    function _.callSolvencyOracleBeforeQuote()  external => NONDET;
- 
-    function _.getConfigsForSolvency(address) external => NONDET ; //@audit make sure to later reason about this 
-
-    function _.maxLiquidation(address _siloConfig, address _borrower) external  => NONDET;
-
-    function  _.redeem(uint256 _shares , address _receiver, address _owner, ISilo.CollateralType  _collateralType)  external => NONDET;
-
-    function  _.previewRedeem(uint256 _shares, ISilo.CollateralType _collateralType)  external => NONDET;//@audit later make sure to add boorrow and other funcs with just empty imp just in case method change mutation is used
 
 
-    function _.repay(uint256 _assets, address _borrower)  external => NONDET;
+/**
+RUNS:::::
+ORIGINAL : https://prover.certora.com/output/951980/3db9c7f7227f4613aa3c1b85f4128414?anonymousKey=b184c670d0cfef49f48c5b108e38f8647f33ffaf
 
-    function _.turnOffReentrancyProtection() external => NONDET ;  //@audit wt the heck is nondet
+MUTATION :: https://prover.certora.com/output/951980/ec470d951318427a813abeae3a6a9d36?anonymousKey=a8e73aaebad26d98f983e3e36545970558d7bbeb
 
-    function _.safeTransferFrom(address _from, address _to, address _amount)  external => NONDET;
-
-    function _.safeIncreaseAllowance(address _spender, uint256 _amount)  external => NONDET;
-    //@audit later add safetransfer() too ,,, must have and maybe other erc20 too
-    //@audit later make sure tokens are properly dispatched to valid erc20 asset token 0
-
-    function _.revertIfError(bytes4 _selector)  external => NONDET;
-
-    function _.getExactLiquidationAmounts(ISiloConfig.ConfigData  _collateralConfig, ISiloConfig.ConfigData _debtConfig, address _user, uint256 _maxDebtToCover, uint256 _liquidationFee) external => getExactLiquidationAmounts_CVL() expect (uint256, uint256, uint256, bytes4); 
-
-    function _.turnOnReentrancyProtection() external => NONDET;
-
-}
-
-//Examine@audit :: https://prover.certora.com/output/951980/3a26f0e6d44a4f84b46a5c4546680d9f?anonymousKey=9ddc1a83d35df289b991cdfa21e06f54226189ec
-
-//@audit-ok it seems everything is fine, but will be soon verified via mock cvl and rules!!!
-// rule noTimeoutsAndAllCallsAreResolved {
-//     env e;
-//     calldataarg args;
-
-//     liquidationCall(e, args);
-
-//     assert true, "timeouts ?    ||    callresolution ?" ;
-// }
-//@audit certoraMutate this     
-//@audit Examine results
-//@audit-issue failed due to havoc in safetransferfrom, make sure to resolve all calls to cvl calls, ass currently it was nondet that is why it failed check here:::https://prover.certora.com/output/951980/ae75a74e0ce446e28fab2eaf39580e25/?anonymousKey=3c050aba1de7714b19fcae40135e707ef18738f8
-rule BorrowersDebtIsRepaidOnLiquidation {
-    env e;   
-    address _collateralAsset; address _debtAsset; address _borrower; uint256 _maxDebtToCover; bool _receiveSToken;
-
-    mathint borrowerDebtBefore = debt[_borrower];
-    //call
-    liquidationCall(e,_collateralAsset, _debtAsset, _borrower, _maxDebtToCover, _receiveSToken);
-
-    mathint borrowerDebtAfter = debt[_borrower];
-
-
-    assert borrowerDebtAfter < borrowerDebtBefore, "Liquidation must decrease borrowers debt";
-}
+*/
