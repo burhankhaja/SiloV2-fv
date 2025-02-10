@@ -28,6 +28,7 @@ function repayCVL( uint256 _repayDebtAssets, address _borrower) returns bool {
 function forwardTransferFromNoChecksCVL(address _borrower, address _receiver, uint256 _shares) returns bool {
     env e;
     require _receiver != e.msg.sender;
+    require _receiver != _borrower;
 
     // take from borrower
     collateralTokenBalances[_borrower] = collateralTokenBalances[_borrower] - _shares;
