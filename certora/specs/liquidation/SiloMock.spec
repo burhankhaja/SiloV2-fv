@@ -19,6 +19,41 @@ function repayCVL(uint256 _repayDebtAssets, address _borrower) returns bool {
     return _ignore;
 }
 
+function forwardTransferFromNoChecksCVL(address _borrower, address _receiver, uint256 _shares) returns bool {
+    bool _ignore; 
+    return _ignore;
+}
+
+function accrueInterestCVL()  returns bool {
+    bool _ignore;
+    return _ignore;
+}
+
+function callSolvencyOracleBeforeQuoteCVL()  returns bool {
+    bool _ignore;
+   return _ignore;
+}
+
+function redeemCVL(uint256 _shares , address _receiver, address _owner, ISilo.CollateralType  _collateralType)  returns bool {
+    bool _ignore;
+    return _ignore;
+}
+
+function safeTransferFromCVL(address _from, address _to, uint256 _amount)  returns bool {
+    bool _ignore;
+    return _ignore;
+}
+
+function safeIncreaseAllowanceCVL(address _spender, uint256 _amount) returns bool  {
+    bool _ignore;
+    return _ignore;
+}
+
+function revertIfErrorCVL(bytes4 _selector)  returns bool {
+    bool _ignore;
+    return _ignore;
+}
+
 
 
 
