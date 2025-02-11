@@ -45,7 +45,7 @@ rule flashLoanIntegrity {
 
 }
 
-
+//@audit-ok
 rule SiloSharesCantBeBurntUnexpectedly(method f) filtered {
     f -> !f.isView
 }{
@@ -53,12 +53,29 @@ rule SiloSharesCantBeBurntUnexpectedly(method f) filtered {
     calldataarg args;
 
     uint collateralSharesSupplyBefore = silo_0.totalSupply(e);
+    require collateralSharesSupplyBefore < max_uint256;
     
     f(e, args);
 
     uint collateralSharesSupplyAfter = silo_0.totalSupply(e);
 
     assert collateralSharesSupplyAfter < collateralSharesSupplyBefore => canBurn(f), "silo shares shouldn't not be burnt unexpectedly!";
+}
+//@audit
+rule SiloSharesCantBeMintedUnexpectedly(method f) filtered {
+    f -> !f.isView
+}{
+    env e;
+    calldataarg args;
+
+    uint collateralSharesSupplyBefore = silo_0.totalSupply(e);
+    require collateralSharesSupplyBefore > 0;
+    
+    f(e, args);
+
+    uint collateralSharesSupplyAfter = silo_0.totalSupply(e);
+
+    assert collateralSharesSupplyAfter > collateralSharesSupplyBefore => canMint(f), "silo shares shouldn't not be minted unexpectedly!";
 }
 
 //@audit-ok 
@@ -605,4 +622,8 @@ function flashFeeCVL(uint256 _amount) returns uint256  {
 
 function canBurn(method f) returns bool {
     return f.selector == sig:burn(address,address,uint256).selector || f.selector == sig:callOnBehalfOfSilo(address,uint256,ISilo.CallType,bytes).selector || f.selector == sig:withdraw(uint256,address,address).selector || f.selector == sig:redeem(uint256,address,address).selector || f.selector == sig:redeem(uint256,address,address, ISilo.CollateralType).selector || f.selector == sig:withdraw(uint256,address,address, ISilo.CollateralType).selector || f.selector == sig:transitionCollateral(uint256,address,ISilo.CollateralType).selector;
+}
+
+function canMint(method f) returns bool {
+    return f.selector == sig:mint(address,address,uint256).selector || f.selector == sig:mint(uint256,address).selector || f.selector == sig:callOnBehalfOfSilo(address,uint256,ISilo.CallType,bytes).selector || f.selector == sig:deposit(uint256,address).selector || f.selector == sig:deposit(uint256,address, ISilo.CollateralType).selector || f.selector == sig:mint(uint256,address, ISilo.CollateralType).selector || f.selector == sig:transitionCollateral(uint256,address,ISilo.CollateralType).selector;
 }
