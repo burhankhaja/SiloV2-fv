@@ -1,4 +1,6 @@
-// This contract simulates the underlying silo logic, the original silo dispatching were causing `out of resources` disaster for the prover, since summarizing underlying silo logic will give the exact verification result that we could have gotten on the original one, As the Socrates never said , "Remember the goal is to verify the logic of liquidation module"
+// DISCLAIMER : This contract simulates the underlying silo logic and its share token dependencies, the original silo dispatching were causing `out of resources` disaster for the prover, since summarizing underlying silo logic will give the exact verification result that we could have gotten over the original one
+
+// As the Socrates never said , "Remember the Main goal of this spec is to verify the logic of liquidation module not the underlying silo contracts!"
 
 using PartialLiquidation as partialLiquidation;
 
@@ -6,6 +8,13 @@ ghost mapping(address=>mathint) debt;
 ghost mapping(address=>mathint) assetTokenBalances;  
 ghost mapping(address=>mathint) collateralTokenBalances;
 ghost mapping(address=>mathint) protectedTokenBalances;
+
+// replicate above states in transiant state
+ghost mapping(address=>mathint) TRANSIENT_assetTokenBalances;
+ghost mapping(address=>mathint) TRANSIENT_collateralTokenBalances;
+ghost mapping(address=>mathint) TRANSIENT_protectedTokenBalances;
+
+ghost bool TRANSIENT_interestAccrued;
 
    
 function getExactLiquidationAmounts_CVL() returns (uint256, uint256, uint256, bytes4){
@@ -42,6 +51,7 @@ function forwardTransferFromNoChecksCVL(address _borrower, address _receiver, ui
 }
 
 function accrueInterestCVL()  returns bool {
+    TRANSIENT_interestAccrued = true;
     return true;
 }
 
@@ -63,9 +73,18 @@ require _receiver != _owner;
     collateralTokenBalances[_owner] = collateralTokenBalances[_owner] - _shares;
     assetTokenBalances[_receiver] = assetTokenBalances[_receiver] + assets;
 
+    // Logic for transient balance
+    TRANSIENT_collateralTokenBalances[_owner] = 0;
+    TRANSIENT_assetTokenBalances[_receiver] = TRANSIENT_assetTokenBalances[_receiver] + assets;
+ 
+
    } else {
       protectedTokenBalances[_owner] = protectedTokenBalances[_owner] - _shares;
       assetTokenBalances[_receiver] = assetTokenBalances[_receiver] + assets;
+
+      // Logic for transient balance
+      TRANSIENT_protectedTokenBalances[_owner] = 0;
+      TRANSIENT_assetTokenBalances[_receiver] = TRANSIENT_assetTokenBalances[_receiver] + assets;
    }
 
    return true;

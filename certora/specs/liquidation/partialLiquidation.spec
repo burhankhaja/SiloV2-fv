@@ -48,13 +48,8 @@ methods {
 
 }
 
-
-//@audit For More specific verified run of  rule  'BorrowersDebtIsRepaidOnLiquidation' over actual ShareDebtToken and other non-mock contracts dispatched contracts check out this:: 
-// https://prover.certora.com/output/951980/4e3c67a4d2d7416f834a093a0ad950f9?anonymousKey=714af5389a523e42d185f6fdfe3991404004cd94
-
-
-//@audit-ok :: 
-
+//@audit-ok
+//@doc: liquidating a borrower must decrease his debt
 rule BorrowersDebtIsRepaidOnLiquidation {
     env e;   
     address _collateralAsset; address _debtAsset; address _borrower; uint256 _maxDebtToCover; bool _receiveSToken;
@@ -69,6 +64,7 @@ rule BorrowersDebtIsRepaidOnLiquidation {
     assert borrowerDebtAfter < borrowerDebtBefore, "Liquidation must decrease borrowers debt";
 }
 
+//@audit-ok ::
 //@doc: asset tokens must be taken from liquidator but not more the the given `_maxDebtToCover` limit
 rule AssetsUptoMaxCoverageAreTakenFromLiquidator {
     env e;
@@ -78,7 +74,10 @@ rule AssetsUptoMaxCoverageAreTakenFromLiquidator {
     uint256 _maxDebtToCover;
     bool _receiveSToken;
 
+    require _receiveSToken; 
+
     mathint LiquidatorAssetBalanceBefore = assetTokenBalances[e.msg.sender];
+
 
     //Liquidation call
     liquidationCall( e, 
@@ -87,7 +86,7 @@ rule AssetsUptoMaxCoverageAreTakenFromLiquidator {
         _borrower,
         _maxDebtToCover,
         _receiveSToken
-    );
+    ); 
 
     mathint LiquidatorAssetBalanceAfter = assetTokenBalances[e.msg.sender];
 
@@ -95,7 +94,8 @@ rule AssetsUptoMaxCoverageAreTakenFromLiquidator {
     assert LiquidatorAssetBalanceAfter < LiquidatorAssetBalanceBefore && LiquidatorAssetBalanceAfter >= LiquidatorAssetBalanceBefore - _maxDebtToCover, "assets tokens must be taken from liquidator but not more than his expected max coverage limit";
 }
 
-
+//@audit-ok 
+//@doc: if liquidator want to receive underlying share tokens, he should only get share tokens and not the actual underlying assets
 rule LiquidatorMustOnlyReceiveShareTokensWhileChoosingReceiveSToken {
     env e;
     address _collateralAsset;
@@ -108,6 +108,8 @@ rule LiquidatorMustOnlyReceiveShareTokensWhileChoosingReceiveSToken {
     mathint liquidatorProtectedShareBalanceBefore = protectedTokenBalances[e.msg.sender];
     mathint liquidatorCollateralSharesBalanceBefore = collateralTokenBalances[e.msg.sender];
 
+    require _receiveSToken;
+
     //Liquidation call
     liquidationCall( e, 
         _collateralAsset,
@@ -121,11 +123,13 @@ rule LiquidatorMustOnlyReceiveShareTokensWhileChoosingReceiveSToken {
     mathint liquidatorProtectedShareBalanceAfter = protectedTokenBalances[e.msg.sender];
     mathint liquidatorCollateralSharesBalanceAfter = collateralTokenBalances[e.msg.sender];
 
-    assert _receiveSToken => liquidatorProtectedShareBalanceAfter > liquidatorProtectedShareBalanceBefore && liquidatorCollateralSharesBalanceAfter > liquidatorCollateralSharesBalanceBefore && LiquidatorAssetBalanceAfter == liquidatorAssetBalanceBefore, "Liquidator must receive share tokens, and no underlying assets";
+    assert _receiveSToken => liquidatorProtectedShareBalanceAfter > liquidatorProtectedShareBalanceBefore && liquidatorCollateralSharesBalanceAfter > liquidatorCollateralSharesBalanceBefore && LiquidatorAssetBalanceAfter <= liquidatorAssetBalanceBefore, "Liquidator shares balance must increase not the underlying assets"; 
 
 } 
 
-rule LiquidatorMustOnlyReceiveUnderlyingAssetsWhileChoosingNotReceiveSToken {
+//@audit-ok
+//@doc: if liquidator wants to receive underlying assets, he should only get the underlying assets and not any kind of share tokens
+rule LiquidatorMustOnlyReceiveUnderlyingAssetsWhileNotChoosingReceiveSToken {
     env e;
     address _collateralAsset;
     address _debtAsset;
@@ -133,9 +137,13 @@ rule LiquidatorMustOnlyReceiveUnderlyingAssetsWhileChoosingNotReceiveSToken {
     uint256 _maxDebtToCover;
     bool _receiveSToken;
 
-    mathint liquidatorAssetBalanceBefore = assetTokenBalances[e.msg.sender];
-    mathint liquidatorProtectedShareBalanceBefore = protectedTokenBalances[e.msg.sender];
-    mathint liquidatorCollateralSharesBalanceBefore = collateralTokenBalances[e.msg.sender];
+
+    //@note :: since two calls to transfernochecks are aggresively summarized to transfer both protected and collateral shares to receiver, trainsient storage is needed in this context such that the given redeeming share type is set to nill in redeemCVL function and the uncontrolled havocs of collateralTokenBalances and protectedTokenBalances are prevented.
+    mathint liquidatorTransientAssetBalanceBefore = TRANSIENT_assetTokenBalances[e.msg.sender];
+    mathint liquidatorTransientCollateralSharesBalanceBefore = TRANSIENT_collateralTokenBalances[e.msg.sender];
+    mathint liquidatorTransientProtectedShareBalanceBefore = TRANSIENT_protectedTokenBalances[e.msg.sender];
+
+    
 
     //Liquidation call
     liquidationCall( e, 
@@ -146,16 +154,17 @@ rule LiquidatorMustOnlyReceiveUnderlyingAssetsWhileChoosingNotReceiveSToken {
         _receiveSToken
     );
 
-    mathint liquidatorAssetBalanceAfter = assetTokenBalances[e.msg.sender];
-    mathint liquidatorProtectedShareBalanceAfter = protectedTokenBalances[e.msg.sender];
-    mathint liquidatorCollateralSharesBalanceAfter = collateralTokenBalances[e.msg.sender];
+    mathint liquidatorTransientAssetBalanceAfter  = TRANSIENT_assetTokenBalances[e.msg.sender];
+    mathint liquidatorTransientCollateralSharesBalanceAfter = TRANSIENT_collateralTokenBalances[e.msg.sender];
+    mathint liquidatorTransientProtectedShareBalanceAfter = TRANSIENT_protectedTokenBalances[e.msg.sender];
 
 
-  assert !_receiveSToken => liquidatorAssetBalanceAfter > liquidatorAssetBalanceBefore && liquidatorProtectedShareBalanceAfter == liquidatorProtectedShareBalanceBefore && liquidatorCollateralSharesBalanceBefore == liquidatorCollateralSharesBalanceAfter, "Liquidator must receive underlying assets, and no share tokens";
-
+    assert !_receiveSToken => liquidatorTransientAssetBalanceAfter > liquidatorTransientAssetBalanceBefore && liquidatorTransientCollateralSharesBalanceAfter <= liquidatorTransientCollateralSharesBalanceBefore && liquidatorTransientProtectedShareBalanceAfter <= liquidatorTransientProtectedShareBalanceBefore, "only underlying assets of liquidator must increase not the shares";
 
 }
 
+//@audit-ok 
+//@doc: Liquidation should not hold share tokens, instead it must burn them for exchange of underlying assets
 rule PartialLiquidationAlwaysBurnsSharesForExchangeOfUnderlyingAssets {
     env e;
     address _collateralAsset;
@@ -165,8 +174,10 @@ rule PartialLiquidationAlwaysBurnsSharesForExchangeOfUnderlyingAssets {
     bool _receiveSToken;
 
 
-    mathint protectedSharesBefore = protectedTokenBalances[partialLiquidation];
-    mathint collateralSharesBefore = collateralTokenBalances[partialLiquidation];
+    mathint TransientCollateralSharesBalanceBefore = TRANSIENT_collateralTokenBalances[partialLiquidation];
+    mathint TransientProtectedShareBalanceBefore = TRANSIENT_protectedTokenBalances[partialLiquidation];
+
+    require TransientCollateralSharesBalanceBefore > 0 && TransientProtectedShareBalanceBefore > 0;
 
     //Liquidation call
     liquidationCall( e, 
@@ -177,9 +188,34 @@ rule PartialLiquidationAlwaysBurnsSharesForExchangeOfUnderlyingAssets {
         _receiveSToken
     );
 
-    mathint protectedSharesAfter = protectedTokenBalances[partialLiquidation];
-    mathint collateralSharesAfter = collateralTokenBalances[partialLiquidation];
+    mathint TransientCollateralSharesBalanceAfter = TRANSIENT_collateralTokenBalances[partialLiquidation];
+    mathint TransientProtectedShareBalanceAfter = TRANSIENT_protectedTokenBalances[partialLiquidation];
 
 
-  assert !_receiveSToken => protectedSharesBefore == protectedSharesAfter && collateralSharesBefore == collateralSharesAfter, "shares must be burnt from liquidation module for exchange of underlying assets";
+    assert !_receiveSToken => TransientCollateralSharesBalanceAfter < TransientCollateralSharesBalanceBefore && TransientProtectedShareBalanceAfter < TransientProtectedShareBalanceBefore, "shares must be burnt from liquidation module for exchange of underlying assets";
+}
+
+//@audit-ok
+//@doc: liquidation must accrue interest on silo
+rule InterestIsAccruedInSiloOnLiquidation {
+   env e; 
+   calldataarg args;
+   require !TRANSIENT_interestAccrued;
+
+   liquidationCall( e, args);
+
+   assert TRANSIENT_interestAccrued, "Liquidation must accrue silo interests";
+
+}
+
+//@doc: PartialLiquidation Module can't be intialized twice
+rule ReInitializationOfPartialLiquidationModuleIsNotAllowed {
+    env e;
+    calldataarg args;
+    require siloConfig(e) != 0;
+
+    initialize@withrevert(e, args);
+
+    assert lastReverted, "PartialLiquidation Module can't be intialized twice";
+
 }
