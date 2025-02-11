@@ -1,6 +1,3 @@
-// Importing silo0 setup from ./access-single-silo.spec
-// @note this setup is for silo0 only make sure confs are compatible too
-// @note also try whether cvl functions of a file are imported with it.
 import "./access-single-silo.spec";
 
 using Token0 as assetToken0; 
@@ -32,17 +29,13 @@ methods {
 rule flashLoanIntegrity {
     env e;
     address _receiver;
-    //assetToken0
     uint256 _amount;
     bytes _data;
     require _amount > 0;
     require _receiver != silo_0;
     
-
-    
     mathint receiverBalanceBefore = assetToken0.balanceOf(e, _receiver);
         
-
     flashLoan(e, _receiver, assetToken0, _amount, _data);
 
     mathint receiverBalanceAfter = assetToken0.balanceOf(e, _receiver);
@@ -51,8 +44,6 @@ rule flashLoanIntegrity {
     assert receiverBalanceAfter == receiverBalanceBefore, "Receiver flashloaned asset balance should neither magically increase or decrease, assuming flashFee to be 0";
 
 }
-
-
 
 
 rule SiloSharesCantBeBurntUnexpectedly(method f) filtered {
@@ -610,24 +601,6 @@ rule InterestIsAccruedOnDepositAndMint {
 
 function flashFeeCVL(uint256 _amount) returns uint256  {
     return 0;
-}
-
-
-function CVL_convertToAssetsOrToShares(uint256 _assets, uint256 _shares) returns (uint256, uint256){
-    uint256 assets; uint256 shares;
-
-    require _assets > 0 || _shares > 0;
-    if (_assets > 0 ) {
-        require _shares == 0;
-        require assets == _assets && shares == assets;
-
-        return (assets , shares);
-    } else {
-        require _assets == 0;
-        require shares == _shares && assets == shares;
-
-        return (assets, shares);
-    }
 }
 
 function canBurn(method f) returns bool {
